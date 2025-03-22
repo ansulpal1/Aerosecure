@@ -9,19 +9,25 @@ const generateRandomPassword = () => {
 // 📌 Register a New Device
 export const registerDevice = async (req, res) => {
     try {
-        const { deviceId } = req.body;
+        console.log("📥 Incoming Request:", req.body);
 
-        // Check if device already exists
+        const { deviceId } = req.body;
+        if (!deviceId) {
+            return res.status(400).json({ error: "Device ID is required!" });
+        }
+
+        // 🔍 Check if device already exists
         let existingDevice = await Device.findOne({ deviceId });
         if (existingDevice) {
             return res.status(400).json({ message: "Device already registered!" });
         }
 
-        // Generate and hash password
+        // 🔑 Generate and hash password
         const password = generateRandomPassword();
+        console.log("Generated Password:", password);
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Save Device to DB
+        // 💾 Save Device to DB
         const newDevice = new Device({
             deviceId,
             password: hashedPassword,
@@ -29,11 +35,15 @@ export const registerDevice = async (req, res) => {
         });
         await newDevice.save();
 
+        console.log("✅ Device Registered:", { deviceId, password });
+
         res.status(201).json({ message: "Device registered!", deviceId, password });
     } catch (error) {
-        res.status(500).json({ error: "Internal Server Error pal" });
+        console.error("❌ ERROR:", error.message);
+        res.status(500).json({ error: error.message || "Internal Server Error" });
     }
 };
+
 
 // 📌 Update Device Location
 export const updateDeviceLocation = async (req, res) => {
