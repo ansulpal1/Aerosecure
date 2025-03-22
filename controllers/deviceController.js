@@ -1,10 +1,7 @@
 import bcrypt from "bcrypt";
 import Device from "../models/deviceModel.js";
 
-// 📌 Generate Random Password Function
-const generateRandomPassword = () => {
-    return Math.random().toString(36).slice(-8); // Generate 8-character password
-};
+
 
 // 📌 Register a New Device
 export const registerDevice = async (req, res) => {
@@ -23,8 +20,8 @@ export const registerDevice = async (req, res) => {
         }
 
         // 🔑 Generate and hash password
-        const password = generateRandomPassword();
-        console.log("Generated Password:", password);
+        const password = "12345678"
+        
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // 💾 Save Device to DB
