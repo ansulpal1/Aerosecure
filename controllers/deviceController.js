@@ -31,7 +31,7 @@ export const registerDevice = async (req, res) => {
 
         res.status(201).json({ message: "Device registered!", deviceId, password });
     } catch (error) {
-        res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({ error: "Internal Server Error pal" });
     }
 };
 
