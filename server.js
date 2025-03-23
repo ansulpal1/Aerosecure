@@ -1,54 +1,54 @@
-import express from 'express';
-import { WebSocketServer } from 'ws';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import deviceRoutes from './routes/deviceRoutes.js';
-import connectDB from './config/db.js';
-import http from 'http';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import connectDB from "./config/db.js";
+import deviceRoutes from "./routes/deviceRoutes.js";
 
 dotenv.config();
 
 const app = express();
+const server = createServer(app); // Create HTTP Server
+
+const PORT = process.env.PORT || 8080; // 🔹 Dynamic Port Configuration
+
+// Initialize Socket.IO
+const io = new Server(server, {
+    cors: {
+        origin: process.env.FRONTEND_URL, // Allow frontend to connect
+        credentials: true,
+    },
+});
+
 app.use(cors({ credentials: true, origin: process.env.FRONTEND_URL }));
 app.use(express.json());
 
-app.use('/api/devices', deviceRoutes);
+// API Routes
+app.use("/api/devices", deviceRoutes);
 
-const PORT = process.env.PORT || 8080;
+// WebSocket Connection Handling
+io.on("connection", (socket) => {
+    console.log("🔌 New Device Connected:", socket.id);
 
-// ✅ Create an HTTP Server
-const server = http.createServer(app);
-
-// ✅ Create WebSocket Server
-const wss = new WebSocketServer({ noServer: true });
-
-wss.on('connection', (ws) => {
-    console.log('✅ WebSocket Connected');
-
-    ws.on('message', (data) => {
-        console.log('📡 Received:', data.toString());
+    // Listen for sensor data from ESP32
+    socket.on("sensorData", (data) => {
+        console.log("📡 Received Data:", data);
+        io.emit("newData", data); // Broadcast data to all connected clients
     });
 
-    ws.on('close', () => {
-        console.log('❌ WebSocket Disconnected');
+    // Handle Disconnection
+    socket.on("disconnect", () => {
+        console.log("❌ Device Disconnected:", socket.id);
     });
-
-    // Send a test message
-    ws.send('Hello from WebSocket Server!');
 });
+
 // Simple API Test
-app.get('/', (req, res) => {
-    res.send('🔥 Aerosecure Backend is Running!');
-  });
-
-// ✅ Upgrade HTTP to WebSocket
-server.on('upgrade', (request, socket, head) => {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
-    });
+app.get("/", (req, res) => {
+    res.send("🔥 Aerosecure Backend is Running!");
 });
 
-// ✅ Connect to MongoDB and Start Server
+// Connect to MongoDB and Start Server
 connectDB().then(() => {
     server.listen(PORT, () => {
         console.log(`🚀 Server running on port ${PORT}`);
