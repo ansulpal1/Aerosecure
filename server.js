@@ -1,10 +1,10 @@
 import express from 'express';
-import { WebSocketServer } from 'ws';  // Import WebSocket library
+import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import deviceRoutes from './routes/deviceRoutes.js';
 import connectDB from './config/db.js';
-import http from 'http';  // ✅ Required for WebSocket server
+import http from 'http';
 
 dotenv.config();
 
@@ -16,30 +16,41 @@ app.use('/api/devices', deviceRoutes);
 
 const PORT = process.env.PORT || 8080;
 
-// ✅ Create an HTTP Server (for WebSockets)
+// ✅ Create an HTTP Server
 const server = http.createServer(app);
 
-// ✅ Setup WebSocket Server
-const wss = new WebSocketServer({ server });
+// ✅ Create WebSocket Server
+const wss = new WebSocketServer({ noServer: true });
 
 wss.on('connection', (ws) => {
-  console.log('✅ New WebSocket Connection!');
+    console.log('✅ WebSocket Connected');
 
-  ws.on('message', (data) => {
-    console.log('📡 Received Data:', data.toString());
+    ws.on('message', (data) => {
+        console.log('📡 Received:', data.toString());
+    });
+
+    ws.on('close', () => {
+        console.log('❌ WebSocket Disconnected');
+    });
+
+    // Send a test message
+    ws.send('Hello from WebSocket Server!');
+});
+// Simple API Test
+app.get('/', (req, res) => {
+    res.send('🔥 Aerosecure Backend is Running!');
   });
 
-  ws.on('close', () => {
-    console.log('❌ WebSocket Disconnected');
-  });
-
-  // ✅ Send a test message to ESP32 after connection
-  ws.send('Hello from Aerosecure WebSocket Server!');
+// ✅ Upgrade HTTP to WebSocket
+server.on('upgrade', (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+    });
 });
 
-// ✅ Start the server
+// ✅ Connect to MongoDB and Start Server
 connectDB().then(() => {
-  server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-  });
+    server.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+    });
 });
