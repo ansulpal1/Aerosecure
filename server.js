@@ -1,9 +1,10 @@
 import express from 'express';
-import { WebSocketServer } from 'ws'; // Import WebSocket library
+import { WebSocketServer } from 'ws';  // Import WebSocket library
 import cors from 'cors';
 import dotenv from 'dotenv';
 import deviceRoutes from './routes/deviceRoutes.js';
 import connectDB from './config/db.js';
+import http from 'http';  // ✅ Required for WebSocket server
 
 dotenv.config();
 
@@ -15,17 +16,10 @@ app.use('/api/devices', deviceRoutes);
 
 const PORT = process.env.PORT || 8080;
 
-// Simple API Test
-app.get('/', (req, res) => {
-  res.send('🔥 Aerosecure Backend is Running!');
-});
+// ✅ Create an HTTP Server (for WebSockets)
+const server = http.createServer(app);
 
-// Start HTTP Server
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
-
-// 🔹 Setup WebSocket Server
+// ✅ Setup WebSocket Server
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws) => {
@@ -37,5 +31,15 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     console.log('❌ WebSocket Disconnected');
+  });
+
+  // ✅ Send a test message to ESP32 after connection
+  ws.send('Hello from Aerosecure WebSocket Server!');
+});
+
+// ✅ Start the server
+connectDB().then(() => {
+  server.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
   });
 });
