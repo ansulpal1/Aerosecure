@@ -1,56 +1,73 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import { createServer } from "http";
-import { Server } from "socket.io";
-import connectDB from "./config/db.js";
-import deviceRoutes from "./routes/deviceRoutes.js";
+import express from 'express';
+import { WebSocketServer } from 'ws';
+import cors from 'cors';
+import http from 'http';
+import dotenv from 'dotenv';
+import deviceRoutes from './routes/deviceRoutes.js';
+import superAdminRoutes from './routes/superAdminRoutes.js';
+import fireOfficerRoutes from './routes/fireOfficerRoutes.js';
+import connectDB from "./config/db.js"
 
+// Environment variables configuration
 dotenv.config();
 
+// MongoDB connection (you can import your DB configuration here)
+// import connectDB from "./config/db.js";
+
+// Initialize Express
 const app = express();
-const server = createServer(app); // Create HTTP Server
+const server = http.createServer(app);
 
-const PORT = process.env.PORT || 8080; // 🔹 Dynamic Port Configuration
+// Enable CORS for all origins (adjust as necessary)
+app.use(cors({ credentials: true, origin: '*' }));
 
-// Initialize Socket.IO
-const io = new Server(server, {
-    cors: {
-        origin: process.env.FRONTEND_URL, // Allow frontend to connect
-        credentials: true,
-    },
-});
-
-app.use(cors({ credentials: true, origin: process.env.FRONTEND_URL }));
+// Use JSON parsing middleware
 app.use(express.json());
 
 // API Routes
 app.use("/api/devices", deviceRoutes);
+app.use('/api/superadmin', superAdminRoutes);
+app.use('/api/fireofficer', fireOfficerRoutes);
 
-// WebSocket Connection Handling
-io.on("connection", (socket) => {
-    console.log("🔌 New Device Connected:", socket.id);
+// WebSocket setup
+const wss = new WebSocketServer({ server });  // Use same HTTP server for WebSocket
 
-    // Listen for sensor data from ESP32
-    socket.on("sensorData", (data) => {
-        console.log("📡 Received Data:", data);
-        io.emit("newData", data); // Broadcast data to all connected clients
+wss.on('connection', (ws) => {
+  console.log('🔌 Client connected');
+
+  // When receiving messages from ESP32
+  ws.on('message', (message) => {
+    console.log('📨 Received from ESP32:', message.toString());
+
+    // Forward the message to all connected clients except the sender
+    wss.clients.forEach((client) => {
+      if (client !== ws && client.readyState === 1) {
+        client.send(message.toString());
+      }
     });
+  });
 
-    // Handle Disconnection
-    socket.on("disconnect", () => {
-        console.log("❌ Device Disconnected:", socket.id);
-    });
+  // When a client disconnects
+  ws.on('close', () => {
+    console.log('❌ Client disconnected');
+  });
 });
 
-// Simple API Test
+// Simple API Test route
 app.get("/", (req, res) => {
-    res.send("🔥 Aerosecure Backend is Running!");
+  res.send("🔥 AeroSecure Backend is Running!");
 });
 
-// Connect to MongoDB and Start Server
+// MongoDB connection (uncomment and modify if required)
+// connectDB().then(() => {
+  const PORT = process.env.PORT || 8080;
+
+  // Start HTTP server and WebSocket on the same port
+  
+
 connectDB().then(() => {
-    server.listen(PORT, () => {
-        console.log(`🚀 Server running on port ${PORT}`);
-    });
-});
+
+        server.listen(PORT, () => {
+            console.log(`🚀🚀 Socket.io server running on port ${PORT}`)
+        })
+     }); 
