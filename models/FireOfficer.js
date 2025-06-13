@@ -25,7 +25,7 @@ const fireOfficerSchema = new mongoose.Schema({
     },
     rank: {
         type: String,
-        default: 'Fire Officer',
+        default:'Fire Officer',
     },
     isActive:{
         type:String,
@@ -37,6 +37,10 @@ const fireOfficerSchema = new mongoose.Schema({
         default:'false',
 
     },
+    last_login_date:{
+        type: Date,
+        default: Date.now,
+      },
     createdAt: {
         type: Date,
         default: Date.now,

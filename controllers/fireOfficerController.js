@@ -79,29 +79,136 @@ return res.json({message:'Login Successfully',
         refreshToken
     }
 })
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+  } catch (error) {
+    return res.status(500).json({
+      message: error.message || error,
+      error: true,
+      success: false
+  })
   }
 };
 
 // 🔑 Update Password After Login
 export const updatePassword = async (req, res) => {
+  const userId = req.userId; // Make sure this is set via auth middleware
   const { currentPassword, newPassword } = req.body;
-  const officerId = req.user.id;
 
   try {
-    const officer = await FireOfficer.findById(officerId);
-    if (!officer) return res.status(404).json({ message: 'Fire Officer not found' });
+    // Basic validation
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "All fields are required1." });
+    }
 
-    const isMatch = await bcrypt.compare(currentPassword, officer.password);
-    if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+      return res.status(400).json({ message: "Passwords must be strings." });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters." });
+    }
+
+    const user = await FireOfficer.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    // Defensive: ensure stored password is a string
+    if (typeof user.password !== 'string') {
+      console.error("Stored password is not a string:", user.password);
+      return res.status(500).json({ message: "Password format error in database." });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect." });
+    }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    officer.password = hashedPassword;
-    await officer.save();
+    user.password = hashedPassword;
+    await user.save();
 
-    res.status(200).json({ message: 'Password updated successfully' });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    return res.status(200).json({
+      message: "Password updated successfully.",
+      error: false,
+      success: true
+    });
+
+  } catch (error) {
+    console.error("Password change error:", error);
+    return res.status(500).json({ message: "Server error." });
   }
 };
+//login device details
+export const officerDetailes = async (req, res) => {
+  try {
+      const userId= req.userId
+      const officer = await FireOfficer.findById(userId).select("-password")
+      return res.json({
+          message: 'Officer details fetched successfully',
+          error: false,
+          success: true,
+          data:officer
+      })
+
+  }catch(error){
+      return res.status(500).json({
+          message: "Something  is wrong",
+          error: true,
+          success: false
+      })
+  }
+}
+
+
+
+// controllers/fireOfficerController.js
+export const getUnassignedOfficers = async (req, res) => {
+  try {
+    const officers = await FireOfficer.find({ workAsigend: false }).select("_id name email");
+    return res.json({
+      message: "Unassigned officers fetched successfully",
+      error: false,
+      success: true,
+      data: officers
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: true,
+      success: false
+    });
+  }
+};
+
+
+// controllers/fireOfficerController.js
+export const assignWorkToOfficer = async (req, res) => {
+  try {
+    const { _id } = req.body;
+
+    const officer = await FireOfficer.findById(_id);
+    if (!officer) {
+      return res.status(404).json({
+        message: "Officer not found",
+        error: true,
+        success: false
+      });
+    }
+
+    officer.workAsigend = true;
+    await officer.save();
+
+    return res.json({
+      message: "Work assigned successfully",
+      error: false,
+      success: true,
+      data: officer
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error assigning work",
+      error: true,
+      success: false
+    });
+  }
+};
+
+

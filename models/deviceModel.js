@@ -17,9 +17,13 @@ const deviceSchema = new mongoose.Schema({
         type:Number,
         default:null
       },
-      mobile:{
+      phone:{
         type:Number,
         default:null
+      },
+      last_login_date:{
+        type: Date,
+        default: Date.now,
       },
     
     createdAt: {
